@@ -325,6 +325,14 @@ export default {
         xAxis: {
           min: this.getZoomedMinDate(),
           max: this.getZoomedMaxDate(),
+          type: 'datetime',
+          // 配置日期格式，去掉星期
+          dateTimeLabelFormats: {
+            day: '%m月%d日',
+            week: '%m月%d日',
+            month: '%Y年%m月',
+            year: '%Y年',
+          },
           currentDateIndicator: {
             enabled: true,
             color: '#ff0000',

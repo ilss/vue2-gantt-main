@@ -68,10 +68,23 @@ export default {
       // 启用任务折叠功能
       gantt.config.open_tree_initially = true
 
-      // 配置时间轴
-      gantt.config.scale_unit = 'day'
-      gantt.config.date_scale = '%m月%d日'
-      gantt.config.subscales = [{ unit: 'day', step: 1, date: '%d' }]
+      // 配置时间轴 - 使用 scales 配置，只显示日期，不显示星期
+
+      gantt.config.scales = [
+        { unit: 'month', step: 1, format: '%Y-%m' },
+        { unit: 'day', step: 1, format: '%d' },
+      ]
+      // 自定义日期格式模板，确保不显示星期
+      gantt.templates.scale_date = (date, scale) => {
+        if (scale.unit === 'day') {
+          // 只显示月日，不显示星期
+          const month = date.getMonth() + 1
+          const day = date.getDate()
+          return `${month}月${day}日`
+        }
+        // 其他单位使用默认格式
+        return gantt.date.date_to_str(scale.format || '%Y-%m-%d')(date)
+      }
 
       // 配置最小列宽，用于缩放（初始值，会在 setInitialZoom 中调整）
       gantt.config.min_column_width = 60
@@ -624,5 +637,16 @@ export default {
   color: #666;
   font-size: 12px;
   font-weight: normal;
+}
+
+/* 隐藏星期显示 */
+::v-deep .gantt_scale_cell {
+  /* 确保只显示自定义格式的日期 */
+}
+
+/* 隐藏可能存在的星期文本 */
+::v-deep .gantt_scale_cell::after {
+  display: none !important;
+  content: '' !important;
 }
 </style>
