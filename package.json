@@ -1,0 +1,29 @@
+{
+  "name": "vue2-gantt",
+  "version": "1.0.0",
+  "description": "Vue 2 Gantt Chart Project",
+  "main": "index.js",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "dhtmlx-gantt": "^9.1.0",
+    "highcharts": "^11.4.0",
+    "highcharts-vue": "^1.4.3",
+    "vue": "^2.7.14",
+    "vue-gantt-chart": "^1.0.11",
+    "vue-router": "^3.6.5"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-router": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "vue-template-compiler": "^2.7.14"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
