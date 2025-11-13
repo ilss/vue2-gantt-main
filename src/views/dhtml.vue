@@ -137,7 +137,7 @@ export default {
         }
       })
 
-      if (dates.length > 0) {
+      if (dates && dates.length > 0) {
         // 找到最早和最晚的日期
         this.minDate = new Date(Math.min(...dates))
         this.maxDate = new Date(Math.max(...dates))
@@ -491,7 +491,7 @@ export default {
 <style scoped>
 .gantt-container {
   width: 100%;
-  height: 100vh;
+  /* height: 100vh; */
   box-sizing: border-box;
 }
 

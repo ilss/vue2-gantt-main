@@ -50,23 +50,18 @@
           v-for="(bar, index) in item.childArray"
           :key="index"
           class="gantt-bar-item"
-          :class="getBarClass(item)"
           :style="getBarStyle(bar, item)"
         >
           <div
             class="progress-overlay"
-            :style="{ width: (item.progress || 0) + '%' }"
+            :style="{ width: (bar.progress || item.progress || 0) + '%' }"
           ></div>
-          <span class="progress-text">{{ item.progress || 0 }}%</span>
+          <span class="progress-text"
+            >{{ bar.progress || item.progress || 0 }}%</span
+          >
         </div>
       </template>
     </GanttChart>
-
-    <!-- 里程碑标记 -->
-    <div class="milestone-line" style="left: calc(300px + 7 * 80px)"></div>
-    <div class="milestone-label" style="left: calc(300px + 7 * 80px - 30px)">
-      里程碑1
-    </div>
   </div>
 </template>
 
@@ -80,6 +75,12 @@ export default {
       zoomLevel: 1,
       ganttKey: 0,
       baseTimeSection: ['2021/03/14', '2021/04/01'],
+      // 严格按照图片的配色方案
+      colorMap: {
+        pink: '#ffb3d9',
+        purple: '#b19cd9',
+        blue: '#87ceeb',
+      },
       taskData: [
         {
           id: 'project',
@@ -452,22 +453,16 @@ export default {
       this.ganttKey++
     },
     getBarStyle(bar, item) {
-      // vue-gantt-chart 会自动处理位置，这里主要设置样式
+      // 严格按照图片配色方案设置背景色
+      const colorName = bar.color || item.color
+      const backgroundColor = this.colorMap[colorName] || this.colorMap.blue
       return {
-        backgroundColor: this.getColor(item.color),
+        backgroundColor: backgroundColor,
         borderRadius: '4px',
       }
     },
-    getBarClass(item) {
-      return `bar-${item.color || 'default'}`
-    },
     getColor(colorName) {
-      const colors = {
-        pink: '#ffb3d9',
-        purple: '#b19cd9',
-        blue: '#87ceeb',
-      }
-      return colors[colorName] || '#87ceeb'
+      return this.colorMap[colorName] || this.colorMap.blue
     },
   },
 }
@@ -479,6 +474,7 @@ export default {
   height: 100vh;
   padding: 20px;
   overflow: auto;
+  background: #fff;
 }
 
 /* 统一左侧侧边栏背景色和样式 */
@@ -650,6 +646,7 @@ export default {
   box-sizing: border-box;
 }
 
+/* 严格按照图片配色的任务条样式 */
 .gantt-bar-item {
   position: relative;
   height: 24px;
@@ -665,6 +662,7 @@ export default {
   transform: scale(1.02);
 }
 
+/* 进度覆盖层 - 白色半透明 */
 .progress-overlay {
   position: absolute;
   top: 0;
@@ -672,8 +670,10 @@ export default {
   height: 100%;
   background: rgba(255, 255, 255, 0.3);
   transition: width 0.3s;
+  z-index: 1;
 }
 
+/* 进度文字 */
 .progress-text {
   position: absolute;
   top: 50%;
@@ -684,38 +684,19 @@ export default {
   font-weight: bold;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 }
 
-.milestone-line {
-  position: absolute;
-  top: 0;
-  width: 2px;
-  height: 100%;
-  background: red;
-  z-index: 100;
-  pointer-events: none;
-}
-
-.milestone-label {
-  position: absolute;
-  top: -20px;
-  color: red;
-  font-size: 11px;
-  font-weight: bold;
-  z-index: 101;
-  pointer-events: none;
-}
-
+/* 严格按照图片配色的任务条背景色 */
 .bar-pink {
-  background: #ffb3d9;
+  background-color: #ffb3d9 !important;
 }
 
 .bar-purple {
-  background: #b19cd9;
+  background-color: #b19cd9 !important;
 }
 
 .bar-blue {
-  background: #87ceeb;
+  background-color: #87ceeb !important;
 }
 </style>

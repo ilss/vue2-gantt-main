@@ -360,12 +360,13 @@ export default {
           uniqueNames: true,
           categories: categories,
           labels: {
+            align: 'left',
             formatter: function () {
               const task = flatData[this.pos]
               if (!task) return this.value
 
-              // 检查是否有子任务
-              const hasChildren = flatData.some((t) => t.parent === task.id)
+              // 检查是否有子任务（从原始数据中检查，而不是从 flatData）
+              const hasChildren = vueInstance.hasTaskChildren(task.id)
               const isCollapsed = collapsedTasks.has(task.id)
 
               // 计算层级深度
@@ -382,7 +383,7 @@ export default {
 
               // 如果有子任务，添加折叠图标
               if (hasChildren) {
-                icon = isCollapsed ? '▶ ' : '▼ '
+                icon = isCollapsed ? '▶' : '▼'
               } else {
                 icon = '  '
               }
@@ -392,6 +393,7 @@ export default {
             useHTML: true,
             style: {
               cursor: 'pointer',
+              textAlign: 'left',
             },
           },
         },
@@ -416,6 +418,10 @@ export default {
           {
             name: '任务',
             data: flatData,
+            // 确保进度条显示
+            point: {
+              events: {},
+            },
           },
         ],
         plotOptions: {
@@ -631,7 +637,8 @@ export default {
 <style scoped>
 .highcharts-gantt-wrapper {
   width: 100%;
-  height: 100vh;
+  /* height: 100vh; */
+  /* overflow: auto; */
 }
 
 .zoom-controls {
@@ -684,5 +691,43 @@ export default {
   width: 100%;
   /* height: calc(100vh - 120px); */
   overflow: auto;
+}
+
+/* 确保 Y 轴标签左对齐 */
+:deep(.highcharts-yaxis-labels text) {
+  text-anchor: start !important;
+}
+
+:deep(.highcharts-yaxis-labels) {
+  text-align: left !important;
+  left: 10px !important;
+}
+
+/* 确保进度条可见 */
+:deep(.highcharts-gantt-series .highcharts-point) {
+  stroke-width: 0;
+}
+
+/* 进度条覆盖层样式 - 白色半透明，确保可见 */
+:deep(.highcharts-gantt-series .highcharts-point-completed),
+:deep(.highcharts-gantt-series path[fill-opacity]),
+:deep(.highcharts-gantt-series .highcharts-point[fill-opacity]) {
+  fill: rgba(255, 255, 255, 0.5) !important;
+  fill-opacity: 0.5 !important;
+  opacity: 1 !important;
+  stroke: rgba(255, 255, 255, 0.6) !important;
+  stroke-width: 1px !important;
+  visibility: visible !important;
+  display: block !important;
+}
+
+/* 确保所有进度相关的元素都可见 */
+:deep(.highcharts-gantt-series .highcharts-point) {
+  position: relative;
+}
+
+:deep(.highcharts-gantt-series .highcharts-point-completed) {
+  pointer-events: none;
+  z-index: 2;
 }
 </style>
