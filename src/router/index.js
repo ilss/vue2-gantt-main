@@ -3,6 +3,7 @@ import VueRouter from 'vue-router'
 import Home from '../views/Home.vue'
 import Dhtml from '../views/dhtml.vue'
 import Highcharts from '../views/highcharts.vue'
+import Frappe from '../views/frappe.vue'
 
 Vue.use(VueRouter)
 
@@ -21,6 +22,11 @@ const routes = [
     path: '/highcharts',
     name: 'Highcharts',
     component: Highcharts
+  },
+  {
+    path: '/frappe',
+    name: 'Frappe',
+    component: Frappe
   }
 ]
 
