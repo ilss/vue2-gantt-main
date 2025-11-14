@@ -1,3 +1,8 @@
+/*
+ * @Author: Liang Liang
+ * @Date: 2025-11-13 09:42:32
+ * @Description:
+ */
 import Vue from 'vue'
 import App from './App.vue'
 import router from './router'
@@ -9,6 +14,5 @@ Vue.config.productionTip = false
 
 new Vue({
   router,
-  render: h => h(App)
+  render: (h) => h(App),
 }).$mount('#app')
-
