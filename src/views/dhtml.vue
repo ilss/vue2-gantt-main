@@ -10,8 +10,28 @@ export default {
 
   data() {
     return {
-      currentZoomLevel: 1, // 当前缩放级别，1=月级，2=周级，3=天级
+      currentZoomLevel: 4, // 当前缩放级别，1=年级，2=月级，3=周级，4=天级，5=小时级，默认天级
       zoomLevels: [
+        {
+          name: '年级',
+          scales: [
+            {
+              unit: 'year',
+              step: 1,
+              format: (date) => {
+                return date.getFullYear() + ' 年'
+              },
+            },
+            {
+              unit: 'month',
+              step: 1,
+              format: (date) => {
+                return date.getMonth() + 1 + ' 月'
+              },
+            },
+          ],
+          minColumnWidth: 100,
+        },
         {
           name: '月级',
           scales: [
@@ -101,6 +121,7 @@ export default {
     // 插件
     gantt.plugins({
       auto_scheduling: true,
+      tooltip: true, // 启用 tooltip 插件
     })
 
     // 配置
@@ -123,6 +144,42 @@ export default {
 
     // 禁用添加按钮
     gantt.config.show_add_column = false
+
+    // 配置 tooltip 显示任务信息
+    gantt.templates.tooltip_text = (start, end, task) => {
+      const startDate = gantt.templates.tooltip_date_format(start)
+      const endDate = gantt.templates.tooltip_date_format(end)
+      const duration = task.duration || 0
+      const progress = task.progress || 0
+
+      let html = `<div style="padding: 8px; min-width: 200px; color: #333;">`
+      html += `<div style="font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #537cfa;">${
+        task.text || '未命名任务'
+      }</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>开始时间:</b> ${startDate}</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>结束时间:</b> ${endDate}</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${duration} 天</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>进度:</b> ${progress}%</div>`
+
+      if (task.type) {
+        html += `<div style="margin-bottom: 4px; color: #333;"><b>类型:</b> ${task.type}</div>`
+      }
+
+      html += `</div>`
+      return html
+    }
+
+    // 配置 tooltip 日期格式
+    gantt.templates.tooltip_date_format = (date) => {
+      if (!date) return ''
+      const d = new Date(date)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const hours = String(d.getHours()).padStart(2, '0')
+      const minutes = String(d.getMinutes()).padStart(2, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}`
+    }
 
     // Lightbox（付费版才生效）
     gantt.locale.labels.section_split = 'Display'
@@ -155,14 +212,14 @@ export default {
           type: 'project',
           progress: 0,
           open: true,
-          start_date: '02-04-2023 00:00',
+          start_date: '02-04-2025 00:00',
           duration: 13,
           parent: 0,
         },
         {
           id: 12,
           text: 'Task #1',
-          start_date: '03-04-2023 00:00',
+          start_date: '03-04-2025 00:00',
           duration: 5,
           parent: '11',
           progress: 0,
@@ -171,7 +228,7 @@ export default {
         {
           id: 13,
           text: 'Task #2',
-          start_date: '03-04-2023 00:00',
+          start_date: '03-04-2025 00:00',
           type: 'project',
           render: 'split',
           parent: '11',
@@ -182,7 +239,7 @@ export default {
         {
           id: 17,
           text: 'Stage #1',
-          start_date: '03-04-2023 00:00',
+          start_date: '03-04-2025 00:00',
           duration: 1,
           parent: '13',
           progress: 0,
@@ -191,7 +248,7 @@ export default {
         {
           id: 18,
           text: 'Stage #2',
-          start_date: '05-04-2023 00:00',
+          start_date: '05-04-2025 00:00',
           duration: 2,
           parent: '13',
           progress: 0,
@@ -200,7 +257,7 @@ export default {
         {
           id: 19,
           text: 'Stage #3',
-          start_date: '08-04-2023 00:00',
+          start_date: '08-04-2025 00:00',
           duration: 1,
           parent: '13',
           progress: 0,
@@ -209,7 +266,7 @@ export default {
         {
           id: 20,
           text: 'Stage #4',
-          start_date: '10-04-2023 00:00',
+          start_date: '10-04-2025 00:00',
           duration: 4,
           parent: '13',
           progress: 0,
@@ -218,7 +275,7 @@ export default {
         {
           id: 14,
           text: 'Task #3',
-          start_date: '02-04-2023 00:00',
+          start_date: '02-04-2025 00:00',
           duration: 6,
           parent: '11',
           progress: 0,
@@ -232,13 +289,13 @@ export default {
           parent: '11',
           progress: 0,
           open: true,
-          start_date: '03-04-2023 00:00',
+          start_date: '03-04-2025 00:00',
           duration: 11,
         },
         {
           id: 21,
           text: 'Stage #1',
-          start_date: '03-04-2023 00:00',
+          start_date: '03-04-2025 00:00',
           duration: 4,
           parent: '15',
           progress: 0,
@@ -247,7 +304,7 @@ export default {
         {
           id: 22,
           text: 'Stage #2',
-          start_date: '08-04-2023 00:00',
+          start_date: '08-04-2025 00:00',
           duration: 3,
           parent: '15',
           progress: 0,
@@ -256,7 +313,7 @@ export default {
         {
           id: 23,
           text: 'Mediate milestone',
-          start_date: '14-04-2023 00:00',
+          start_date: '14-04-2025 00:00',
           duration: 0,
           type: 'milestone',
           parent: '15',
@@ -267,7 +324,7 @@ export default {
         {
           id: 16,
           text: 'Final milestone',
-          start_date: '15-04-2023 00:00',
+          start_date: '15-04-2025 00:00',
           duration: 0,
           type: 'milestone',
           parent: '11',
@@ -549,4 +606,17 @@ export default {
   width: 100%;
   height: 600px;
 }
+
+/* 自定义 tooltip 样式 */
+.gantt_tooltip {
+  background-color: #f4f4f4 !important;
+  color: #333 !important;
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* .gantt_tooltip * {
+  color: #333 !important;
+} */
 </style>
