@@ -203,143 +203,232 @@ export default {
     // 初始化
     gantt.init('gantt_here')
 
-    // 解析数据
-    const ganttData = {
-      data: [
+    // 生成 Project 数据的辅助函数
+    const generateProjectData = (projectNum, dayOffset) => {
+      const baseDate = new Date(2025, 3, 2) // 2025年4月2日
+      baseDate.setDate(baseDate.getDate() + dayOffset)
+
+      const formatDate = (date) => {
+        const day = String(date.getDate()).padStart(2, '0')
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const year = date.getFullYear()
+        return `${day}-${month}-${year} 00:00`
+      }
+
+      const addDays = (date, days) => {
+        const result = new Date(date)
+        result.setDate(result.getDate() + days)
+        return result
+      }
+
+      // ID 基础值
+      const projectId = projectNum * 100 + 1
+      const task1Id = projectNum * 100 + 2
+      const task2Id = projectNum * 100 + 3
+      const task3Id = projectNum * 100 + 4
+      const task4Id = projectNum * 100 + 5
+      const finalMilestoneId = projectNum * 100 + 6
+      const stage1Task2Id = projectNum * 100 + 7
+      const stage2Task2Id = projectNum * 100 + 8
+      const stage3Task2Id = projectNum * 100 + 9
+      const stage4Task2Id = projectNum * 100 + 10
+      const stage1Task4Id = projectNum * 100 + 11
+      const stage2Task4Id = projectNum * 100 + 12
+      const mediateMilestoneId = projectNum * 100 + 13
+
+      const projectStart = baseDate
+      const task1Start = addDays(projectStart, 1)
+      const task2Start = addDays(projectStart, 1)
+      const task3Start = projectStart
+      const task4Start = addDays(projectStart, 1)
+      const finalMilestoneStart = addDays(projectStart, 13)
+
+      const stage1Task2Start = addDays(task2Start, 0)
+      const stage2Task2Start = addDays(task2Start, 2)
+      const stage3Task2Start = addDays(task2Start, 5)
+      const stage4Task2Start = addDays(task2Start, 7)
+
+      const stage1Task4Start = addDays(task4Start, 0)
+      const stage2Task4Start = addDays(task4Start, 5)
+      const mediateMilestoneStart = addDays(task4Start, 11)
+
+      const data = [
         {
-          id: 11,
-          text: 'Project #1',
+          id: projectId,
+          text: `Project #${projectNum}`,
           type: 'project',
           progress: 0,
           open: true,
-          start_date: '02-04-2025 00:00',
+          start_date: formatDate(projectStart),
           duration: 13,
           parent: 0,
         },
         {
-          id: 12,
+          id: task1Id,
           text: 'Task #1',
-          start_date: '03-04-2025 00:00',
+          start_date: formatDate(task1Start),
           duration: 5,
-          parent: '11',
+          parent: String(projectId),
           progress: 0,
           open: true,
         },
         {
-          id: 13,
+          id: task2Id,
           text: 'Task #2',
-          start_date: '03-04-2025 00:00',
+          start_date: formatDate(task2Start),
           type: 'project',
           render: 'split',
-          parent: '11',
+          parent: String(projectId),
           progress: 0.5,
           open: false,
           duration: 11,
         },
         {
-          id: 17,
+          id: stage1Task2Id,
           text: 'Stage #1',
-          start_date: '03-04-2025 00:00',
+          start_date: formatDate(stage1Task2Start),
           duration: 1,
-          parent: '13',
+          parent: String(task2Id),
           progress: 0,
           open: true,
         },
         {
-          id: 18,
+          id: stage2Task2Id,
           text: 'Stage #2',
-          start_date: '05-04-2025 00:00',
+          start_date: formatDate(stage2Task2Start),
           duration: 2,
-          parent: '13',
+          parent: String(task2Id),
           progress: 0,
           open: true,
         },
         {
-          id: 19,
+          id: stage3Task2Id,
           text: 'Stage #3',
-          start_date: '08-04-2025 00:00',
+          start_date: formatDate(stage3Task2Start),
           duration: 1,
-          parent: '13',
+          parent: String(task2Id),
           progress: 0,
           open: true,
         },
         {
-          id: 20,
+          id: stage4Task2Id,
           text: 'Stage #4',
-          start_date: '10-04-2025 00:00',
+          start_date: formatDate(stage4Task2Start),
           duration: 4,
-          parent: '13',
+          parent: String(task2Id),
           progress: 0,
           open: true,
         },
         {
-          id: 14,
+          id: task3Id,
           text: 'Task #3',
-          start_date: '02-04-2025 00:00',
+          start_date: formatDate(task3Start),
           duration: 6,
-          parent: '11',
+          parent: String(projectId),
           progress: 0,
           open: true,
         },
         {
-          id: 15,
+          id: task4Id,
           text: 'Task #4',
           type: 'project',
           render: 'split',
-          parent: '11',
+          parent: String(projectId),
           progress: 0,
           open: true,
-          start_date: '03-04-2025 00:00',
+          start_date: formatDate(task4Start),
           duration: 11,
         },
         {
-          id: 21,
+          id: stage1Task4Id,
           text: 'Stage #1',
-          start_date: '03-04-2025 00:00',
+          start_date: formatDate(stage1Task4Start),
           duration: 4,
-          parent: '15',
+          parent: String(task4Id),
           progress: 0,
           open: true,
         },
         {
-          id: 22,
+          id: stage2Task4Id,
           text: 'Stage #2',
-          start_date: '08-04-2025 00:00',
+          start_date: formatDate(stage2Task4Start),
           duration: 3,
-          parent: '15',
+          parent: String(task4Id),
           progress: 0,
           open: true,
         },
         {
-          id: 23,
+          id: mediateMilestoneId,
           text: 'Mediate milestone',
-          start_date: '14-04-2025 00:00',
+          start_date: formatDate(mediateMilestoneStart),
           duration: 0,
           type: 'milestone',
-          parent: '15',
+          parent: String(task4Id),
           progress: 0,
           open: true,
-          duration: 0,
         },
         {
-          id: 16,
+          id: finalMilestoneId,
           text: 'Final milestone',
-          start_date: '15-04-2025 00:00',
+          start_date: formatDate(finalMilestoneStart),
           duration: 0,
           type: 'milestone',
-          parent: '11',
+          parent: String(projectId),
           progress: 0,
           open: true,
-          duration: 0,
         },
-      ],
-      links: [
-        { id: '1', source: '17', target: '18', type: '0' },
-        { id: '2', source: '18', target: '19', type: '0' },
-        { id: '3', source: '19', target: '20', type: '0' },
-        { id: '4', source: '21', target: '22', type: '0' },
-        { id: '5', source: '22', target: '23', type: '0' },
-      ],
+      ]
+
+      const links = [
+        {
+          id: `${projectNum}-1`,
+          source: String(stage1Task2Id),
+          target: String(stage2Task2Id),
+          type: '0',
+        },
+        {
+          id: `${projectNum}-2`,
+          source: String(stage2Task2Id),
+          target: String(stage3Task2Id),
+          type: '0',
+        },
+        {
+          id: `${projectNum}-3`,
+          source: String(stage3Task2Id),
+          target: String(stage4Task2Id),
+          type: '0',
+        },
+        {
+          id: `${projectNum}-4`,
+          source: String(stage1Task4Id),
+          target: String(stage2Task4Id),
+          type: '0',
+        },
+        {
+          id: `${projectNum}-5`,
+          source: String(stage2Task4Id),
+          target: String(mediateMilestoneId),
+          type: '0',
+        },
+      ]
+
+      return { data, links }
+    }
+
+    // 生成10组 Project 数据
+    const allData = []
+    const allLinks = []
+    for (let i = 1; i <= 10; i++) {
+      const dayOffset = (i - 1) * 20 // 每个 Project 间隔20天
+      const projectData = generateProjectData(i, dayOffset)
+      allData.push(...projectData.data)
+      allLinks.push(...projectData.links)
+    }
+
+    // 解析数据
+    const ganttData = {
+      data: allData,
+      links: allLinks,
     }
 
     gantt.parse(ganttData)

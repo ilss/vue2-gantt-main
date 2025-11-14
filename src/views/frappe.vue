@@ -412,6 +412,14 @@ export default {
         const isMilestone = task.type === 'milestone' || task.duration === 0
         const finalEndDate = isMilestone ? this.addDays(startDate, 1) : endDate
 
+        // 根据任务类型设置不同的样式类
+        let customClass = ''
+        if (task.type === 'milestone') {
+          customClass = 'milestone'
+        } else if (task.type === 'project') {
+          customClass = 'project'
+        }
+
         const frappeTask = {
           id: String(task.id),
           name: task.text,
@@ -419,7 +427,7 @@ export default {
           end: this.formatDateForFrappe(finalEndDate),
           progress: (task.progress || 0) * 100, // Frappe 使用 0-100
           dependencies: [],
-          custom_class: task.type === 'milestone' ? 'milestone' : '',
+          custom_class: customClass,
         }
 
         taskMap.set(String(task.id), frappeTask)
@@ -811,6 +819,9 @@ export default {
 
 .gantt-container /deep/ .bar {
   cursor: default;
+  fill: #4a90e2 !important; /* 默认蓝色背景 */
+  stroke: #2e5c8a !important; /* 边框颜色 */
+  stroke-width: 1px !important;
 }
 
 .gantt-container /deep/ .bar-progress {
@@ -843,9 +854,36 @@ export default {
 
 /* 里程碑样式 */
 .gantt-container /deep/ .bar.milestone {
-  fill: #ff9800;
-  stroke: #f57c00;
-  stroke-width: 2;
+  fill: #ff9800 !important;
+  stroke: #f57c00 !important;
+  stroke-width: 2px !important;
+}
+
+/* 项目类型任务 - 绿色背景 */
+.gantt-container /deep/ .bar.project {
+  fill: #5cb85c !important; /* 绿色 */
+  stroke: #449d44 !important;
+  stroke-width: 1px !important;
+}
+
+/* 确保所有任务条都有背景色 */
+.gantt-container /deep/ .bar-wrapper .bar {
+  fill: #4a90e2 !important; /* 默认蓝色 */
+  stroke: #2e5c8a !important;
+  stroke-width: 1px !important;
+}
+
+/* 任务条悬停效果 */
+.gantt-container /deep/ .bar-wrapper:hover .bar {
+  opacity: 0.85;
+}
+
+.gantt-container /deep/ .bar-wrapper:hover .bar:not(.milestone):not(.project) {
+  fill: #357abd !important; /* 悬停时更深的蓝色 */
+}
+
+.gantt-container /deep/ .bar-wrapper:hover .bar.project {
+  fill: #449d44 !important; /* 悬停时更深的绿色 */
 }
 
 .gantt-container /deep/ .bar.milestone .bar-progress {
