@@ -157,7 +157,7 @@ npm run lint
 
 ## 👤 作者
 
-Liang Liang
+Skrjs
 
 ## 📅 更新日志
 
