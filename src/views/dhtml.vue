@@ -140,14 +140,14 @@ export default {
             },
             {
               unit: 'minute',
-              step: 5,
+              step: 1, // 每1分钟一个刻度
               format: (date) => {
                 const minutes = date.getMinutes()
-                return minutes + '分'
+                return minutes
               },
             },
           ],
-          minColumnWidth: 20,
+          minColumnWidth: 25, // 1分钟刻度时，栅格最小宽度25px
         },
       ],
       monthsWithData: null,
@@ -200,11 +200,11 @@ export default {
       html += `<div style="margin-bottom: 4px; color: #333;"><b>开始时间:</b> ${startDate}</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>结束时间:</b> ${endDate}</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${duration} 分钟</div>`
-      html += `<div style="margin-bottom: 4px; color: #333;"><b>进度:</b> ${progress}%</div>`
+      // html += `<div style="margin-bottom: 4px; color: #333;"><b>进度:</b> ${progress}%</div>`
 
-      if (task.type) {
-        html += `<div style="margin-bottom: 4px; color: #333;"><b>类型:</b> ${task.type}</div>`
-      }
+      // if (task.type) {
+      //   html += `<div style="margin-bottom: 4px; color: #333;"><b>类型:</b> ${task.type}</div>`
+      // }
 
       html += `</div>`
       return html
@@ -553,10 +553,36 @@ export default {
       // 重新渲染
       gantt.render()
 
-      // 延迟隐藏空列
-      setTimeout(() => {
-        this.hideEmptyColumns()
-      }, 100)
+      // 延迟刷新任务条位置，确保缩放后所有任务正确显示
+      this.$nextTick(() => {
+        setTimeout(() => {
+          // 获取当前滚动位置
+          const scrollState = gantt.getScrollState()
+
+          // 强制刷新数据，重新计算任务条位置
+          if (gantt.refreshData) {
+            gantt.refreshData()
+          }
+          // 强制更新视图
+          if (gantt.updateView) {
+            gantt.updateView()
+          }
+          // 重新渲染以确保所有任务条正确显示
+          gantt.render()
+
+          // 恢复滚动位置并强制刷新
+          if (scrollState) {
+            gantt.scrollTo(scrollState.x, scrollState.y)
+          }
+
+          // 再次延迟确保 DOM 更新完成后再隐藏空列和最终渲染
+          setTimeout(() => {
+            // 再次渲染确保所有任务条正确显示
+            gantt.render()
+            this.hideEmptyColumns()
+          }, 100)
+        }, 100)
+      })
     },
 
     // 隐藏空列
