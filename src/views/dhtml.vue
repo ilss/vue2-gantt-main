@@ -4,7 +4,7 @@
       <div class="toolbar-spacer"></div>
       <div class="export-group">
         <span class="toolbar-label">导出</span>
-        <button class="export-btn" @click="exportChart('png')">PNG</button>
+        <!-- <button class="export-btn" @click="exportChart('png')">PNG</button> -->
         <button class="export-btn" @click="exportChart('pdf')">PDF</button>
         <!-- <button class="export-btn" @click="exportChart('excel')">Excel</button> -->
       </div>
@@ -505,11 +505,76 @@ export default {
           gantt.exportToPNG({
             name: 'gantt.png',
           }),
-        pdf: () =>
-          gantt.exportToPDF({
-            name: 'gantt.pdf',
-            locale: 'cn',
-          }),
+        pdf: () => {
+          // 保存当前配置
+          const originalStaticBackground = gantt.config.static_background
+
+          // 确保当前的时间轴配置已应用（在设置static_background之前）
+          this.applyZoomLevel()
+
+          // 等待配置应用完成
+          this.$nextTick(() => {
+            setTimeout(() => {
+              // 启用static_background以确保PDF导出时时间轴格式正确
+              gantt.config.static_background = true
+
+              // 重新渲染以确保配置生效
+              gantt.render()
+
+              // 再次等待渲染完成
+              setTimeout(() => {
+                // 再次渲染确保时间轴格式正确
+                gantt.render()
+
+                // 最后一次等待确保DOM完全更新
+                setTimeout(() => {
+                  try {
+                    // 导出PDF，使用raw模式确保使用当前的HTML内容
+                    const exportResult = gantt.exportToPDF({
+                      name: 'gantt.pdf',
+                      locale: 'cn',
+                      raw: true, // 使用raw模式，直接渲染当前HTML内容，确保时间轴格式正确
+                    })
+
+                    // 如果返回Promise，处理then/catch
+                    if (
+                      exportResult &&
+                      typeof exportResult.then === 'function'
+                    ) {
+                      exportResult
+                        .then(() => {
+                          // 恢复原始配置
+                          gantt.config.static_background =
+                            originalStaticBackground
+                          // 重新渲染以恢复原始状态
+                          gantt.render()
+                        })
+                        .catch((error) => {
+                          console.error('PDF导出失败:', error)
+                          // 恢复原始配置
+                          gantt.config.static_background =
+                            originalStaticBackground
+                          gantt.render()
+                        })
+                    } else {
+                      // 如果不返回Promise，延迟恢复配置
+                      setTimeout(() => {
+                        gantt.config.static_background =
+                          originalStaticBackground
+                        gantt.render()
+                      }, 1000)
+                    }
+                  } catch (error) {
+                    console.error('PDF导出失败:', error)
+                    // 恢复原始配置
+                    gantt.config.static_background = originalStaticBackground
+                    gantt.render()
+                  }
+                }, 500) // 增加延迟确保DOM完全更新
+              }, 300)
+            }, 200)
+          })
+        },
         excel: () =>
           gantt.exportToExcel({
             name: 'gantt.xlsx',
