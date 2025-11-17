@@ -19,7 +19,7 @@ export default {
 
   data() {
     return {
-      currentZoomLevel: 4, // 当前缩放级别，1=年级，2=月级，3=周级，4=天级，5=小时级，默认天级
+      currentZoomLevel: 5, // 当前缩放级别，1=年级，2=月级，3=周级，4=天级，5=小时级，6=分钟级，默认小时级
       zoomLevels: [
         {
           name: '年级',
@@ -120,6 +120,35 @@ export default {
           ],
           minColumnWidth: 25,
         },
+        {
+          name: '分钟级',
+          scales: [
+            {
+              unit: 'hour',
+              step: 1,
+              format: (date) => {
+                return (
+                  date.getMonth() +
+                  1 +
+                  '月' +
+                  date.getDate() +
+                  '日 ' +
+                  date.getHours() +
+                  '时'
+                )
+              },
+            },
+            {
+              unit: 'minute',
+              step: 5,
+              format: (date) => {
+                const minutes = date.getMinutes()
+                return minutes + '分'
+              },
+            },
+          ],
+          minColumnWidth: 20,
+        },
       ],
       monthsWithData: null,
       sortedMonths: null,
@@ -140,6 +169,9 @@ export default {
       apply_constraints: false,
       gap_behavior: 'preserve',
     }
+
+    // 设置持续时间单位为分钟
+    gantt.config.duration_unit = 'minute'
 
     // 禁用编辑功能
     gantt.config.readonly = true
@@ -167,7 +199,7 @@ export default {
       }</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>开始时间:</b> ${startDate}</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>结束时间:</b> ${endDate}</div>`
-      html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${duration} 天</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${duration} 分钟</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>进度:</b> ${progress}%</div>`
 
       if (task.type) {
@@ -192,7 +224,7 @@ export default {
 
     // 配置任务条显示 duration 而不是 text
     gantt.templates.task_text = (start, end, task) => {
-      return (task.duration || 0) + '天'
+      return (task.duration || 0) + '分钟'
     }
 
     // Lightbox（付费版才生效）
@@ -217,21 +249,28 @@ export default {
     // 初始化
     gantt.init('gantt_here')
 
+    // 生成随机持续时间（1-3分钟）
+    const getRandomDuration = () => {
+      return Math.floor(Math.random() * 3) + 1 // 1-3分钟
+    }
+
     // 生成 Project 数据的辅助函数
-    const generateProjectData = (projectNum, dayOffset) => {
-      const baseDate = new Date(2025, 3, 2) // 2025年4月2日
-      baseDate.setDate(baseDate.getDate() + dayOffset)
+    const generateProjectData = (projectNum, hourOffset) => {
+      const baseDate = new Date(2025, 3, 2, 0, 0, 0) // 2025年4月2日 00:00
+      baseDate.setHours(baseDate.getHours() + hourOffset)
 
       const formatDate = (date) => {
         const day = String(date.getDate()).padStart(2, '0')
         const month = String(date.getMonth() + 1).padStart(2, '0')
         const year = date.getFullYear()
-        return `${day}-${month}-${year} 00:00`
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${day}-${month}-${year} ${hours}:${minutes}`
       }
 
-      const addDays = (date, days) => {
+      const addMinutes = (date, minutes) => {
         const result = new Date(date)
-        result.setDate(result.getDate() + days)
+        result.setMinutes(result.getMinutes() + minutes)
         return result
       }
 
@@ -242,29 +281,57 @@ export default {
       const task3Id = projectNum * 100 + 4
       const task4Id = projectNum * 100 + 5
       const finalMilestoneId = projectNum * 100 + 6
-      const stage1Task2Id = projectNum * 100 + 7
-      const stage2Task2Id = projectNum * 100 + 8
-      const stage3Task2Id = projectNum * 100 + 9
-      const stage4Task2Id = projectNum * 100 + 10
-      const stage1Task4Id = projectNum * 100 + 11
-      const stage2Task4Id = projectNum * 100 + 12
-      const mediateMilestoneId = projectNum * 100 + 13
 
       const projectStart = baseDate
-      const task1Start = addDays(projectStart, 1)
-      const task2Start = addDays(projectStart, 1)
+      const task1Start = addMinutes(projectStart, 5)
+      const task2Start = addMinutes(projectStart, 5)
       const task3Start = projectStart
-      const task4Start = addDays(projectStart, 1)
-      const finalMilestoneStart = addDays(projectStart, 13)
+      const task4Start = addMinutes(projectStart, 5)
 
-      const stage1Task2Start = addDays(task2Start, 0)
-      const stage2Task2Start = addDays(task2Start, 2)
-      const stage3Task2Start = addDays(task2Start, 5)
-      const stage4Task2Start = addDays(task2Start, 7)
+      // 计算子口贴合（task2）的10个子任务
+      const task2SubTasks = []
+      let task2SubTaskId = projectNum * 100 + 7
+      let task2CurrentStart = task2Start
+      for (let i = 0; i < 10; i++) {
+        task2SubTasks.push({
+          id: task2SubTaskId + i,
+          start: new Date(task2CurrentStart),
+        })
+        task2CurrentStart = addMinutes(task2CurrentStart, 4) // 每个间隔4分钟
+      }
 
-      const stage1Task4Start = addDays(task4Start, 0)
-      const stage2Task4Start = addDays(task4Start, 5)
-      const mediateMilestoneStart = addDays(task4Start, 11)
+      // 计算帘布滚压（task4）的10个子任务
+      const task4SubTasks = []
+      let task4SubTaskId = projectNum * 100 + 17
+      let task4CurrentStart = task4Start
+      for (let i = 0; i < 10; i++) {
+        task4SubTasks.push({
+          id: task4SubTaskId + i,
+          start: new Date(task4CurrentStart),
+        })
+        task4CurrentStart = addMinutes(task4CurrentStart, 4) // 每个间隔4分钟
+      }
+
+      // 计算项目总持续时间（取最长任务的结束时间）
+      const task2End = task2SubTasks[task2SubTasks.length - 1].start
+      const task2LastDuration = getRandomDuration()
+      const task2LastEnd = addMinutes(task2End, task2LastDuration)
+
+      const task4End = task4SubTasks[task4SubTasks.length - 1].start
+      const task4LastDuration = getRandomDuration()
+      const task4LastEnd = addMinutes(task4End, task4LastDuration)
+
+      const projectEnd = new Date(
+        Math.max(
+          addMinutes(task1Start, getRandomDuration()).getTime(),
+          task2LastEnd.getTime(),
+          addMinutes(task3Start, getRandomDuration()).getTime(),
+          task4LastEnd.getTime()
+        )
+      )
+      const projectDuration = Math.ceil(
+        (projectEnd - projectStart) / (1000 * 60)
+      ) // 转换为分钟
 
       const data = [
         {
@@ -274,14 +341,14 @@ export default {
           progress: 0,
           open: true,
           start_date: formatDate(projectStart),
-          duration: 13,
+          duration: projectDuration,
           parent: 0,
         },
         {
           id: task1Id,
           text: '复合件贴合',
           start_date: formatDate(task1Start),
-          duration: 5,
+          duration: getRandomDuration(),
           parent: String(projectId),
           progress: 0,
           open: true,
@@ -295,49 +362,22 @@ export default {
           parent: String(projectId),
           progress: 0.5,
           open: false,
-          duration: 11,
+          duration: Math.ceil((task2LastEnd - task2Start) / (1000 * 60)),
         },
-        {
-          id: stage1Task2Id,
+        ...task2SubTasks.map((subTask, index) => ({
+          id: subTask.id,
           text: '子口滚压',
-          start_date: formatDate(stage1Task2Start),
-          duration: 1,
+          start_date: formatDate(subTask.start),
+          duration: getRandomDuration(),
           parent: String(task2Id),
           progress: 0,
           open: true,
-        },
-        {
-          id: stage2Task2Id,
-          text: '子口滚压',
-          start_date: formatDate(stage2Task2Start),
-          duration: 2,
-          parent: String(task2Id),
-          progress: 0,
-          open: true,
-        },
-        {
-          id: stage3Task2Id,
-          text: '子口滚压',
-          start_date: formatDate(stage3Task2Start),
-          duration: 1,
-          parent: String(task2Id),
-          progress: 0,
-          open: true,
-        },
-        {
-          id: stage4Task2Id,
-          text: '子口滚压',
-          start_date: formatDate(stage4Task2Start),
-          duration: 4,
-          parent: String(task2Id),
-          progress: 0,
-          open: true,
-        },
+        })),
         {
           id: task3Id,
           text: '胎体帘布贴合',
           start_date: formatDate(task3Start),
-          duration: 6,
+          duration: getRandomDuration(),
           parent: String(projectId),
           progress: 0,
           open: true,
@@ -351,104 +391,46 @@ export default {
           progress: 0,
           open: true,
           start_date: formatDate(task4Start),
-          duration: 11,
+          duration: Math.ceil((task4LastEnd - task4Start) / (1000 * 60)),
         },
-        {
-          id: stage1Task4Id,
+        ...task4SubTasks.map((subTask, index) => ({
+          id: subTask.id,
           text: '子口滚压',
-          start_date: formatDate(stage1Task4Start),
-          duration: 4,
+          start_date: formatDate(subTask.start),
+          duration: getRandomDuration(),
           parent: String(task4Id),
           progress: 0,
           open: true,
-        },
-        {
-          id: stage2Task4Id,
-          text: '子口滚压',
-          start_date: formatDate(stage2Task4Start),
-          duration: 3,
-          parent: String(task4Id),
-          progress: 0,
-          open: true,
-        },
-        {
-          id: mediateMilestoneId,
-          text: 'Mediate milestone',
-          start_date: formatDate(mediateMilestoneStart),
-          duration: 0,
-          type: 'milestone',
-          parent: String(task4Id),
-          progress: 0,
-          open: true,
-        },
-        // {
-        //   id: finalMilestoneId,
-        //   text: 'Final milestone',
-        //   start_date: formatDate(finalMilestoneStart),
-        //   duration: 0,
-        //   type: 'milestone',
-        //   parent: String(projectId),
-        //   progress: 0,
-        //   open: true,
-        // },
+        })),
       ]
 
-      const links = [
-        {
-          id: `${projectNum}-1`,
-          source: String(stage1Task2Id),
-          target: String(stage2Task2Id),
-          type: '0',
-        },
-        {
-          id: `${projectNum}-2`,
-          source: String(stage2Task2Id),
-          target: String(stage3Task2Id),
-          type: '0',
-        },
-        {
-          id: `${projectNum}-3`,
-          source: String(stage3Task2Id),
-          target: String(stage4Task2Id),
-          type: '0',
-        },
-        {
-          id: `${projectNum}-4`,
-          source: String(stage1Task4Id),
-          target: String(stage2Task4Id),
-          type: '0',
-        },
-        {
-          id: `${projectNum}-5`,
-          source: String(stage2Task4Id),
-          target: String(mediateMilestoneId),
-          type: '0',
-        },
-      ]
+      // 清空 links 数据
+      const links = []
 
       return { data, links }
     }
 
     // 生成10组 Project 数据
     const allData = []
-    const allLinks = []
     for (let i = 1; i <= 10; i++) {
-      const dayOffset = (i - 1) * 20 // 每个 Project 间隔20天
-      const projectData = generateProjectData(i, dayOffset)
+      const hourOffset = (i - 1) * 1 // 每个 Project 间隔1小时
+      const projectData = generateProjectData(i, hourOffset)
       allData.push(...projectData.data)
-      // allLinks.push(...projectData.links)
     }
 
     // 解析数据
     const ganttData = {
       data: allData,
-      links: allLinks,
+      links: [], // 清空 links 数据
     }
 
     gantt.parse(ganttData)
 
-    // 计算有数据的月份
+    // 计算实际数据的开始和结束时间
+    let minStartDate = null
+    let maxEndDate = null
     const monthsWithData = new Set()
+
     gantt.eachTask((task) => {
       if (task.start_date) {
         // gantt.parse() 后，start_date 应该已经是 Date 对象
@@ -464,9 +446,18 @@ export default {
         }
 
         const end = task.duration
-          ? gantt.date.add(start, task.duration, 'day')
+          ? gantt.date.add(start, task.duration, 'minute')
           : start
 
+        // 记录最早开始时间和最晚结束时间
+        if (!minStartDate || start < minStartDate) {
+          minStartDate = new Date(start)
+        }
+        if (!maxEndDate || end > maxEndDate) {
+          maxEndDate = new Date(end)
+        }
+
+        // 记录有数据的月份（用于月份过滤）
         let current = new Date(start)
         while (current <= end) {
           const monthKey =
@@ -481,20 +472,18 @@ export default {
     this.sortedMonths = Array.from(monthsWithData).sort()
     this.monthsWithData = monthsWithData
 
-    // 设置开始和结束日期为有数据的月份范围
-    if (this.sortedMonths.length > 0) {
-      const firstMonthKey = this.sortedMonths[0]
-      const lastMonthKey = this.sortedMonths[this.sortedMonths.length - 1]
+    // 设置开始和结束日期为实际数据的范围（只显示有数据的小时）
+    if (minStartDate && maxEndDate) {
+      // 设置开始日期为最早任务的开始时间（向前扩展1小时以便显示）
+      const startDate = new Date(minStartDate)
+      startDate.setHours(startDate.getHours() - 1, 0, 0, 0) // 向前扩展1小时，分钟设为0
 
-      const startYear = Math.floor(firstMonthKey / 100)
-      const startMonth = firstMonthKey % 100
-      const endYear = Math.floor(lastMonthKey / 100)
-      const endMonth = lastMonthKey % 100
+      // 设置结束日期为最晚任务的结束时间（向后扩展1小时以便显示）
+      const endDate = new Date(maxEndDate)
+      endDate.setHours(endDate.getHours() + 1, 59, 59, 999) // 向后扩展1小时，分钟设为59
 
-      // 设置开始日期为第一个有数据的月份的第一天
-      gantt.config.start_date = new Date(startYear, startMonth - 1, 1)
-      // 设置结束日期为最后一个有数据的月份的最后一天
-      gantt.config.end_date = new Date(endYear, endMonth, 0)
+      gantt.config.start_date = startDate
+      gantt.config.end_date = endDate
     }
 
     // 应用初始缩放级别
@@ -690,6 +679,9 @@ export default {
       if (this.currentZoomLevel < this.zoomLevels.length) {
         this.currentZoomLevel++
         this.applyZoomLevel()
+      } else {
+        // 已达到最大缩放级别（分钟级）
+        console.log('已达到最大缩放级别：分钟级')
       }
     },
 
