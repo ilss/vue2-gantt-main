@@ -1,5 +1,14 @@
 <template>
   <div class="gantt-container">
+    <div class="gantt-toolbar">
+      <div class="toolbar-spacer"></div>
+      <div class="export-group">
+        <span class="toolbar-label">导出</span>
+        <button class="export-btn" @click="exportChart('png')">PNG</button>
+        <button class="export-btn" @click="exportChart('pdf')">PDF</button>
+        <!-- <button class="export-btn" @click="exportChart('excel')">Excel</button> -->
+      </div>
+    </div>
     <div id="gantt_here" class="gantt-box"></div>
   </div>
 </template>
@@ -84,7 +93,7 @@ export default {
               unit: 'day',
               step: 1,
               format: (date) => {
-                return date.getDate() + '日'
+                return date.getDate()
               },
             },
           ],
@@ -181,6 +190,11 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}`
     }
 
+    // 配置任务条显示 duration 而不是 text
+    gantt.templates.task_text = (start, end, task) => {
+      return (task.duration || 0) + '天'
+    }
+
     // Lightbox（付费版才生效）
     gantt.locale.labels.section_split = 'Display'
     gantt.config.lightbox.project_sections = [
@@ -255,7 +269,7 @@ export default {
       const data = [
         {
           id: projectId,
-          text: `Project #${projectNum}`,
+          text: `工序 #${projectNum}`,
           type: 'project',
           progress: 0,
           open: true,
@@ -265,7 +279,7 @@ export default {
         },
         {
           id: task1Id,
-          text: 'Task #1',
+          text: '复合件贴合',
           start_date: formatDate(task1Start),
           duration: 5,
           parent: String(projectId),
@@ -274,7 +288,7 @@ export default {
         },
         {
           id: task2Id,
-          text: 'Task #2',
+          text: '子口贴合',
           start_date: formatDate(task2Start),
           type: 'project',
           render: 'split',
@@ -285,7 +299,7 @@ export default {
         },
         {
           id: stage1Task2Id,
-          text: 'Stage #1',
+          text: '子口滚压',
           start_date: formatDate(stage1Task2Start),
           duration: 1,
           parent: String(task2Id),
@@ -294,7 +308,7 @@ export default {
         },
         {
           id: stage2Task2Id,
-          text: 'Stage #2',
+          text: '子口滚压',
           start_date: formatDate(stage2Task2Start),
           duration: 2,
           parent: String(task2Id),
@@ -303,7 +317,7 @@ export default {
         },
         {
           id: stage3Task2Id,
-          text: 'Stage #3',
+          text: '子口滚压',
           start_date: formatDate(stage3Task2Start),
           duration: 1,
           parent: String(task2Id),
@@ -312,7 +326,7 @@ export default {
         },
         {
           id: stage4Task2Id,
-          text: 'Stage #4',
+          text: '子口滚压',
           start_date: formatDate(stage4Task2Start),
           duration: 4,
           parent: String(task2Id),
@@ -321,7 +335,7 @@ export default {
         },
         {
           id: task3Id,
-          text: 'Task #3',
+          text: '胎体帘布贴合',
           start_date: formatDate(task3Start),
           duration: 6,
           parent: String(projectId),
@@ -330,7 +344,7 @@ export default {
         },
         {
           id: task4Id,
-          text: 'Task #4',
+          text: '帘布滚压',
           type: 'project',
           render: 'split',
           parent: String(projectId),
@@ -341,7 +355,7 @@ export default {
         },
         {
           id: stage1Task4Id,
-          text: 'Stage #1',
+          text: '子口滚压',
           start_date: formatDate(stage1Task4Start),
           duration: 4,
           parent: String(task4Id),
@@ -350,7 +364,7 @@ export default {
         },
         {
           id: stage2Task4Id,
-          text: 'Stage #2',
+          text: '子口滚压',
           start_date: formatDate(stage2Task4Start),
           duration: 3,
           parent: String(task4Id),
@@ -367,16 +381,16 @@ export default {
           progress: 0,
           open: true,
         },
-        {
-          id: finalMilestoneId,
-          text: 'Final milestone',
-          start_date: formatDate(finalMilestoneStart),
-          duration: 0,
-          type: 'milestone',
-          parent: String(projectId),
-          progress: 0,
-          open: true,
-        },
+        // {
+        //   id: finalMilestoneId,
+        //   text: 'Final milestone',
+        //   start_date: formatDate(finalMilestoneStart),
+        //   duration: 0,
+        //   type: 'milestone',
+        //   parent: String(projectId),
+        //   progress: 0,
+        //   open: true,
+        // },
       ]
 
       const links = [
@@ -422,7 +436,7 @@ export default {
       const dayOffset = (i - 1) * 20 // 每个 Project 间隔20天
       const projectData = generateProjectData(i, dayOffset)
       allData.push(...projectData.data)
-      allLinks.push(...projectData.links)
+      // allLinks.push(...projectData.links)
     }
 
     // 解析数据
@@ -491,6 +505,34 @@ export default {
   },
 
   methods: {
+    exportChart(type) {
+      if (typeof gantt === 'undefined') {
+        console.warn('DHTMLX Gantt 未就绪，无法导出')
+        return
+      }
+
+      const exporters = {
+        png: () =>
+          gantt.exportToPNG({
+            name: 'gantt.png',
+          }),
+        pdf: () =>
+          gantt.exportToPDF({
+            name: 'gantt.pdf',
+            locale: 'cn',
+          }),
+        excel: () =>
+          gantt.exportToExcel({
+            name: 'gantt.xlsx',
+          }),
+      }
+
+      const exporter = exporters[type]
+      if (exporter) {
+        exporter()
+      }
+    },
+
     // 应用缩放级别
     applyZoomLevel() {
       const level = this.zoomLevels[this.currentZoomLevel - 1]
@@ -587,6 +629,7 @@ export default {
 
             // 按住 Ctrl 键（Mac 上是 Cmd 键）时进行缩放
             if (event.ctrlKey || event.metaKey) {
+              // 阻止默认行为和事件传播，执行缩放
               event.preventDefault()
               event.stopPropagation()
 
@@ -607,7 +650,10 @@ export default {
                 // 立即执行
                 executeZoom(event.deltaY)
               }
+              return // 按住 Ctrl/Cmd 时，处理完缩放后直接返回
             }
+            // 不按住 Ctrl/Cmd 键时，不做任何处理，让事件正常传播
+            // 这样 gantt 的默认 Y 轴滚动行为可以正常工作
           }
 
           const executeZoom = (deltaY) => {
@@ -622,45 +668,18 @@ export default {
             }
           }
 
-          // 添加到容器元素上（最可靠的方式）
-          container.addEventListener('wheel', handleWheel, { passive: false })
+          // 优先在 gantt 任务区域添加事件监听器（这是实际处理滚动的元素）
+          // 如果找不到任务区域，则在主容器上添加
+          const targetElement = ganttTaskArea || container
 
-          // 如果找到了 gantt 内部容器，也添加监听器
-          if (ganttContainer) {
-            ganttContainer.addEventListener('wheel', handleWheel, {
-              passive: false,
-            })
-            console.log('Wheel event listener added to gantt_container')
-          }
-
-          // 添加到 gantt 任务区域
-          if (ganttTaskArea) {
-            ganttTaskArea.addEventListener('wheel', handleWheel, {
-              passive: false,
-            })
-            console.log('Wheel event listener added to gantt_task')
-          }
-
-          // 添加到 gantt 时间轴区域
-          if (ganttScaleArea) {
-            ganttScaleArea.addEventListener('wheel', handleWheel, {
-              passive: false,
-            })
-            console.log('Wheel event listener added to gantt_scale')
-          }
+          targetElement.addEventListener('wheel', handleWheel, {
+            passive: false,
+            capture: false, // 不使用捕获，让事件先到达 gantt 内部元素
+          })
 
           // 在组件销毁时移除事件监听器
           this.$once('hook:beforeDestroy', () => {
-            container.removeEventListener('wheel', handleWheel)
-            if (ganttContainer) {
-              ganttContainer.removeEventListener('wheel', handleWheel)
-            }
-            if (ganttTaskArea) {
-              ganttTaskArea.removeEventListener('wheel', handleWheel)
-            }
-            if (ganttScaleArea) {
-              ganttScaleArea.removeEventListener('wheel', handleWheel)
-            }
+            targetElement.removeEventListener('wheel', handleWheel)
           })
         }, 1000) // 增加延迟时间
       })
@@ -691,9 +710,48 @@ export default {
   height: 100%;
 }
 
+.gantt-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.export-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-label {
+  font-size: 13px;
+  color: #666;
+}
+
+.export-btn {
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  color: #333;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-btn:hover {
+  border-color: #4b7bf5;
+  color: #4b7bf5;
+}
+
 .gantt-box {
   width: 100%;
-  height: 600px;
+  height: calc(100vh - 140px);
 }
 
 /* 自定义 tooltip 样式 */
@@ -705,7 +763,8 @@ export default {
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* .gantt_tooltip * {
-  color: #333 !important;
-} */
+/* 自定义任务条文本样式 */
+.gantt_task_content {
+  font-size: 12px !important;
+}
 </style>

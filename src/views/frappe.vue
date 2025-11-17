@@ -57,8 +57,11 @@ export default {
         { name: '月级', mode: 'Month' },
       ],
       tasks: [],
+      taskLookup: null,
+      taskNodeMap: null,
       taskTree: [], // 任务树结构
       flattenedTasks: [], // 扁平化的任务列表（用于显示）
+      visibleTaskIds: [],
       expandedTasks: new Set(), // 展开的任务ID集合
       barHeight: 30, // 任务条高度，需要与 Frappe Gantt 的 bar_height 一致
       sidebarWidth: 250, // 左侧任务栏宽度
@@ -229,13 +232,19 @@ export default {
       this.buildTaskTree(ganttData)
 
       // 转换为 Frappe Gantt 格式
-      this.tasks = this.convertToFrappeFormat(ganttData)
+      const { tasks, lookup } = this.convertToFrappeFormat(ganttData)
+      this.tasks = tasks
+      this.taskLookup = lookup
+
+      // 生成初始可见任务
+      this.flattenTasks()
 
       // 计算日期范围
       const dateRange = this.calculateDateRange(this.tasks)
+      const initialTasks = this.getVisibleChartTasks()
 
       // 初始化 Frappe Gantt
-      this.gantt = new Gantt('#gantt_here', this.tasks, {
+      this.gantt = new Gantt('#gantt_here', initialTasks, {
         view_mode: this.zoomLevels[this.currentZoomLevel].mode,
         bar_height: this.barHeight,
         bar_corner_radius: 4,
@@ -312,47 +321,88 @@ export default {
       calculateLevels(rootTasks)
 
       this.taskTree = rootTasks
-      this.flattenTasks()
+      this.taskNodeMap = taskMap
+      this.expandedTasks = this.buildInitialExpandedSet(rootTasks)
     },
 
-    // 扁平化任务树（用于显示）
-    flattenTasks() {
-      const result = []
-      const traverse = (nodes) => {
-        nodes.forEach((node) => {
-          const isExpanded = this.expandedTasks.has(node.id) || node.expanded
+    buildInitialExpandedSet(nodes) {
+      const expanded = new Set()
+      const traverse = (list) => {
+        list.forEach((node) => {
           const hasChildren = node.children && node.children.length > 0
+          if (hasChildren && node.expanded !== false) {
+            expanded.add(node.id)
+          }
+          if (hasChildren) {
+            traverse(node.children)
+          }
+        })
+      }
+      traverse(nodes)
+      return expanded
+    },
 
-          result.push({
+    // 扁平化任务树（用于显示并同步可见任务）
+    flattenTasks() {
+      if (!this.taskTree || !this.taskTree.length) {
+        this.flattenedTasks = []
+        this.visibleTaskIds = []
+        return
+      }
+
+      const flattened = []
+      const visibleIds = []
+      const traverse = (nodes, level = 0) => {
+        nodes.forEach((node) => {
+          const hasChildren = node.children && node.children.length > 0
+          const isExpanded = hasChildren
+            ? this.expandedTasks.has(node.id)
+            : false
+
+          flattened.push({
             id: node.id,
             name: node.name,
-            level: node.level,
-            hasChildren: hasChildren,
+            level,
+            hasChildren,
             expanded: isExpanded,
             type: node.type,
           })
 
-          // 如果展开且有子节点，递归添加子节点
-          if (isExpanded && hasChildren) {
-            traverse(node.children)
+          visibleIds.push(node.id)
+
+          if (hasChildren && isExpanded) {
+            traverse(node.children, level + 1)
           }
         })
       }
 
       traverse(this.taskTree)
-      this.flattenedTasks = result
+
+      this.flattenedTasks = flattened
+      this.visibleTaskIds = visibleIds
+
+      if (this.gantt) {
+        this.refreshGanttTasks()
+      }
     },
 
     // 切换任务展开/折叠
     toggleTask(taskId) {
-      if (this.expandedTasks.has(taskId)) {
-        this.expandedTasks.delete(taskId)
-      } else {
-        this.expandedTasks.add(taskId)
+      const node =
+        (this.taskNodeMap && this.taskNodeMap.get(taskId)) || null
+      if (!node || !node.children || node.children.length === 0) {
+        return
       }
+
+      const nextSet = new Set(this.expandedTasks)
+      if (nextSet.has(taskId)) {
+        nextSet.delete(taskId)
+      } else {
+        nextSet.add(taskId)
+      }
+
+      this.expandedTasks = nextSet
       this.flattenTasks()
-      // 注意：Frappe Gantt 不支持动态显示/隐藏任务，所以这里只更新左侧列表
-      this.$forceUpdate()
     },
 
     // 设置同步滚动
@@ -398,7 +448,7 @@ export default {
     // 转换数据格式为 Frappe Gantt 格式
     convertToFrappeFormat(ganttData) {
       const tasks = []
-      const taskMap = new Map()
+      const taskMap = Object.create(null)
 
       // 第一遍：创建所有任务
       ganttData.data.forEach((task) => {
@@ -430,22 +480,22 @@ export default {
           custom_class: customClass,
         }
 
-        taskMap.set(String(task.id), frappeTask)
+        taskMap[frappeTask.id] = frappeTask
         tasks.push(frappeTask)
       })
 
       // 第二遍：处理依赖关系
       if (ganttData.links) {
         ganttData.links.forEach((link) => {
-          const sourceTask = taskMap.get(String(link.source))
-          const targetTask = taskMap.get(String(link.target))
+          const sourceTask = taskMap[String(link.source)]
+          const targetTask = taskMap[String(link.target)]
           if (sourceTask && targetTask) {
             targetTask.dependencies.push(String(link.source))
           }
         })
       }
 
-      return tasks
+      return { tasks, lookup: taskMap }
     },
 
     // 解析日期字符串
@@ -658,6 +708,40 @@ export default {
         this.currentZoomLevel--
         this.applyZoomLevel()
       }
+    },
+
+    getVisibleChartTasks() {
+      const ids =
+        this.visibleTaskIds && this.visibleTaskIds.length > 0
+          ? this.visibleTaskIds
+          : this.tasks.map((task) => task.id)
+
+      return ids
+        .map((id) => (this.taskLookup ? this.taskLookup[id] : null))
+        .filter(Boolean)
+        .map((task) => this.cloneTaskForChart(task))
+    },
+
+    cloneTaskForChart(task) {
+      if (!task) return null
+      const dependencies = Array.isArray(task.dependencies)
+        ? [...task.dependencies]
+        : []
+      return {
+        ...task,
+        dependencies,
+      }
+    },
+
+    refreshGanttTasks() {
+      if (!this.gantt) return
+      const visibleTasks = this.getVisibleChartTasks()
+      this.gantt.refresh(visibleTasks)
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.alignTaskRows()
+        }, 100)
+      })
     },
 
     // 对齐任务行（确保左侧与右侧行高一致）

@@ -72,9 +72,9 @@ export default {
     return {
       currentTime: new Date('2021/03/21').getTime(),
       collapsedTasks: new Set(),
-      zoomLevel: 1,
+      zoomLevel: 1, // 默认缩放级别，1表示以天为单位显示
       ganttKey: 0,
-      baseTimeSection: ['2021/03/14', '2021/04/01'],
+      baseTimeSection: ['2021/03/14', '2021/04/01'], // 默认时间范围，确保以天为单位显示
       // 严格按照图片的配色方案
       colorMap: {
         pink: '#ffb3d9',

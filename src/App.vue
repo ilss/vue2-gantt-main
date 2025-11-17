@@ -7,9 +7,9 @@
   <div id="app">
     <nav>
       <router-link to="/">vue-gantt-chart</router-link>
-      <router-link to="/dhtml">DHTMLX甘特图</router-link>
-      <router-link to="/highcharts">Highcharts甘特图</router-link>
-      <router-link to="/frappe">Frappe甘特图</router-link>
+      <router-link to="/frappe">Frappe</router-link>
+      <router-link to="/highcharts">Highcharts</router-link>
+      <router-link to="/dhtml">DHTMLX</router-link>
     </nav>
     <router-view />
   </div>
