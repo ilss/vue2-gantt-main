@@ -9,6 +9,7 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "dayjs": "^1.11.19",
     "dhtmlx-gantt": "^9.1.0",
     "frappe-gantt": "^1.0.4",
     "highcharts": "^11.4.0",

@@ -14,6 +14,9 @@
 </template>
 
 <script>
+import dayjs from 'dayjs'
+import { ganttDataObject } from '../data'
+
 export default {
   name: 'GanttDemo',
 
@@ -170,8 +173,18 @@ export default {
       gap_behavior: 'preserve',
     }
 
-    // 设置持续时间单位为分钟
+    // 设置持续时间单位为分钟（内部使用分钟，但数据源是秒级）
     gantt.config.duration_unit = 'minute'
+
+    // 禁用日期四舍五入，确保小 duration 值能正确显示
+    gantt.config.round_dnd_dates = false
+    gantt.config.work_time = false // 禁用工作时间，允许显示任意时间
+
+    // 设置最小任务条宽度（像素），确保小 duration 任务也能显示
+    gantt.config.min_task_bar_width = 1
+
+    // 设置最小 duration（分钟），允许非常小的值
+    gantt.config.min_duration = 0.0001 // 约 0.006 秒
 
     // 禁用编辑功能
     gantt.config.readonly = true
@@ -190,8 +203,25 @@ export default {
     gantt.templates.tooltip_text = (start, end, task) => {
       const startDate = gantt.templates.tooltip_date_format(start)
       const endDate = gantt.templates.tooltip_date_format(end)
-      const duration = task.duration || 0
+      // 使用保存的原始秒值，如果没有则从分钟转换回秒
+      const durationInSeconds =
+        task._originalDurationSeconds !== undefined
+          ? task._originalDurationSeconds
+          : (task.duration || 0) * 60
       const progress = task.progress || 0
+
+      // 格式化持续时间显示（秒）
+      const formatDuration = (seconds) => {
+        if (seconds < 1) {
+          return seconds.toFixed(3) + ' 秒'
+        } else if (seconds < 60) {
+          return seconds.toFixed(2) + ' 秒'
+        } else {
+          const mins = Math.floor(seconds / 60)
+          const secs = (seconds % 60).toFixed(2)
+          return mins + ' 分 ' + secs + ' 秒'
+        }
+      }
 
       let html = `<div style="padding: 8px; min-width: 200px; color: #333;">`
       html += `<div style="font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #537cfa;">${
@@ -199,7 +229,9 @@ export default {
       }</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>开始时间:</b> ${startDate}</div>`
       html += `<div style="margin-bottom: 4px; color: #333;"><b>结束时间:</b> ${endDate}</div>`
-      html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${duration} 分钟</div>`
+      html += `<div style="margin-bottom: 4px; color: #333;"><b>持续时间:</b> ${formatDuration(
+        durationInSeconds
+      )}</div>`
       // html += `<div style="margin-bottom: 4px; color: #333;"><b>进度:</b> ${progress}%</div>`
 
       // if (task.type) {
@@ -210,7 +242,7 @@ export default {
       return html
     }
 
-    // 配置 tooltip 日期格式
+    // 配置 tooltip 日期格式（支持秒级显示）
     gantt.templates.tooltip_date_format = (date) => {
       if (!date) return ''
       const d = new Date(date)
@@ -219,12 +251,42 @@ export default {
       const day = String(d.getDate()).padStart(2, '0')
       const hours = String(d.getHours()).padStart(2, '0')
       const minutes = String(d.getMinutes()).padStart(2, '0')
-      return `${year}-${month}-${day} ${hours}:${minutes}`
+      const seconds = String(d.getSeconds()).padStart(2, '0')
+      const milliseconds = String(d.getMilliseconds()).padStart(3, '0')
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`
     }
 
-    // 配置任务条显示 duration 而不是 text
+    // 配置任务条显示 duration（使用保存的原始秒值）
     gantt.templates.task_text = (start, end, task) => {
-      return (task.duration || 0) + '分钟'
+      // 使用保存的原始秒值，如果没有则从分钟转换回秒
+      const durationInSeconds =
+        task._originalDurationSeconds !== undefined
+          ? task._originalDurationSeconds
+          : (task.duration || 0) * 60
+
+      // 格式化持续时间显示（秒）
+      if (durationInSeconds < 1) {
+        return durationInSeconds.toFixed(3) + '秒'
+      } else if (durationInSeconds < 60) {
+        return durationInSeconds.toFixed(2) + '秒'
+      } else {
+        const mins = Math.floor(durationInSeconds / 60)
+        const secs = (durationInSeconds % 60).toFixed(2)
+        return mins + '分' + secs + '秒'
+      }
+    }
+
+    // 自定义任务条宽度，确保小 duration 任务也能显示
+    gantt.templates.task_width = (start, end, task) => {
+      const duration = task.duration || 0
+      // 如果 duration 小于 0.01 分钟（约 0.6 秒），强制返回最小宽度
+      if (duration > 0 && duration < 0.01) {
+        // 根据当前缩放级别计算最小宽度
+        // 在分钟级缩放时，1 分钟对应一个刻度，小 duration 至少显示 2 像素
+        return 2
+      }
+      // 使用默认计算
+      return null
     }
 
     // Lightbox（付费版才生效）
@@ -249,6 +311,31 @@ export default {
     // 初始化
     gantt.init('gantt_here')
 
+    // 监听渲染事件，确保小 duration 任务条始终可见
+    gantt.attachEvent('onAfterTaskDisplay', () => {
+      setTimeout(() => {
+        gantt.eachTask((task) => {
+          if (
+            task._originalDurationSeconds !== undefined &&
+            task._originalDurationSeconds < 1
+          ) {
+            const taskNode = gantt.getTaskNode(task.id)
+            if (taskNode) {
+              const taskElement = taskNode.querySelector('.gantt_task_line')
+              if (taskElement) {
+                const computedWidth =
+                  parseFloat(window.getComputedStyle(taskElement).width) || 0
+                if (computedWidth < 2) {
+                  taskElement.style.minWidth = '2px'
+                  taskElement.style.width = '2px'
+                }
+              }
+            }
+          }
+        })
+      }, 50)
+    })
+
     // 生成随机持续时间（1-3分钟）
     const getRandomDuration = () => {
       return Math.floor(Math.random() * 3) + 1 // 1-3分钟
@@ -260,12 +347,13 @@ export default {
       baseDate.setHours(baseDate.getHours() + hourOffset)
 
       const formatDate = (date) => {
-        const day = String(date.getDate()).padStart(2, '0')
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const year = date.getFullYear()
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        return `${day}-${month}-${year} ${hours}:${minutes}`
+        return dayjs(date).format('YYYY-MM-DD HH:mm:ss')
+        // const day = String(date.getDate()).padStart(2, '0')
+        // const month = String(date.getMonth() + 1).padStart(2, '0')
+        // const year = date.getFullYear()
+        // const hours = String(date.getHours()).padStart(2, '0')
+        // const minutes = String(date.getMinutes()).padStart(2, '0')
+        // return `${day}-${month}-${year} ${hours}:${minutes}`
       }
 
       const addMinutes = (date, minutes) => {
@@ -280,7 +368,7 @@ export default {
       const task2Id = projectNum * 100 + 3
       const task3Id = projectNum * 100 + 4
       const task4Id = projectNum * 100 + 5
-      const finalMilestoneId = projectNum * 100 + 6
+      // const finalMilestoneId = projectNum * 100 + 6
 
       const projectStart = baseDate
       const task1Start = addMinutes(projectStart, 5)
@@ -419,12 +507,175 @@ export default {
     }
 
     // 解析数据
+    // const ganttData = {
+    //   data: allData,
+    //   links: [], // 清空 links 数据
+    // }
+
+    // 递归遍历所有 start_date 和 end_date，支持秒级和毫秒级精度
+    const convertDates = (items) => {
+      if (!Array.isArray(items)) return
+
+      const parseDate = (dateStr) => {
+        if (!dateStr) return null
+
+        // 如果已经是 Date 对象，直接返回
+        if (dateStr instanceof Date) return dateStr
+
+        // 处理格式：'2025-11-07 11:25:41:693' 或 '2025-11-07 11:25:41.693'
+        if (typeof dateStr === 'string') {
+          // 替换最后一个冒号为点，以支持标准格式
+          let normalizedDate = dateStr.replace(
+            /^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}):(\d+)$/,
+            '$1.$2'
+          )
+
+          // 如果格式是 'YYYY-MM-DD HH:mm:ss:SSS'，转换为 'YYYY-MM-DD HH:mm:ss.SSS'
+          if (
+            normalizedDate.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}:\d{3}$/)
+          ) {
+            normalizedDate = normalizedDate.replace(
+              /(\d{2}:\d{2}:\d{2}):(\d{3})$/,
+              '$1.$2'
+            )
+          }
+
+          const date = new Date(normalizedDate)
+          // 如果解析失败，尝试使用 dayjs
+          if (isNaN(date.getTime())) {
+            return dayjs(dateStr).toDate()
+          }
+          return date
+        }
+
+        return new Date(dateStr)
+      }
+
+      items.forEach((item) => {
+        if (item.start_date) {
+          item.start_date = parseDate(item.start_date)
+        }
+        if (item.end_date) {
+          item.end_date = parseDate(item.end_date)
+        }
+
+        // 递归处理嵌套的 $inlineSplit 数组
+        if (item.$inlineSplit && Array.isArray(item.$inlineSplit)) {
+          convertDates(item.$inlineSplit)
+        }
+      })
+    }
+
+    convertDates(ganttDataObject)
+    console.log(allData)
+
+    // 将秒级 duration 转换为分钟（gantt 内部使用分钟单位）
+    // 但我们需要保存原始秒值用于显示
+    const convertDurationToMinutes = (items) => {
+      if (!Array.isArray(items)) return
+
+      items.forEach((item) => {
+        // 如果 duration 存在且是数字，保存原始秒值，然后转换为分钟
+        if (item.duration !== undefined && typeof item.duration === 'number') {
+          const originalSeconds = item.duration
+          item._originalDurationSeconds = originalSeconds // 保存原始秒值
+          const minutesValue = originalSeconds / 60 // 秒转分钟
+          item.duration = minutesValue
+
+          // 调试：打印小于 1 秒的 duration
+          if (originalSeconds < 1) {
+            console.log(
+              `任务 ${item.id}: 原始秒值=${originalSeconds}, 转换后分钟值=${minutesValue}`
+            )
+          }
+        }
+
+        // 递归处理嵌套的 $inlineSplit 数组
+        if (item.$inlineSplit && Array.isArray(item.$inlineSplit)) {
+          convertDurationToMinutes(item.$inlineSplit)
+        }
+      })
+    }
+
+    convertDurationToMinutes(ganttDataObject)
+
     const ganttData = {
-      data: allData,
+      data: ganttDataObject,
       links: [], // 清空 links 数据
     }
 
     gantt.parse(ganttData)
+
+    // 解析后验证：确保所有任务的 duration 都正确设置（特别是小于 1 秒的任务）
+    let hasSmallDurationTasks = false
+    gantt.eachTask((task) => {
+      if (
+        task._originalDurationSeconds !== undefined &&
+        task._originalDurationSeconds < 1
+      ) {
+        hasSmallDurationTasks = true
+        // 如果原始秒值小于 1，确保 duration 不为 0
+        const expectedMinutes = task._originalDurationSeconds / 60
+        if (
+          task.duration === 0 ||
+          Math.abs(task.duration - expectedMinutes) > 0.0001
+        ) {
+          task.duration = expectedMinutes
+          console.log(
+            `修复任务 ${task.id} 的 duration: ${task.duration} 分钟 (原始: ${task._originalDurationSeconds} 秒)`
+          )
+        }
+      }
+    })
+
+    // 如果有小 duration 任务，强制刷新渲染并设置最小宽度
+    if (hasSmallDurationTasks) {
+      gantt.render()
+
+      // 等待渲染完成后，强制设置小任务条的最小宽度
+      this.$nextTick(() => {
+        setTimeout(() => {
+          gantt.eachTask((task) => {
+            if (
+              task._originalDurationSeconds !== undefined &&
+              task._originalDurationSeconds < 1
+            ) {
+              // 尝试多种选择器来找到任务条元素
+              let taskElement = document.querySelector(
+                `.gantt_task_line[task_id="${task.id}"]`
+              )
+              if (!taskElement) {
+                taskElement = document.querySelector(
+                  `div[task_id="${task.id}"] .gantt_task_line`
+                )
+              }
+              if (!taskElement) {
+                // 使用 gantt 的 API 获取任务条元素
+                const taskNode = gantt.getTaskNode(task.id)
+                if (taskNode) {
+                  taskElement = taskNode.querySelector('.gantt_task_line')
+                }
+              }
+
+              if (taskElement) {
+                const currentWidth = parseFloat(taskElement.style.width) || 0
+                const computedWidth =
+                  parseFloat(window.getComputedStyle(taskElement).width) || 0
+                if (currentWidth < 2 || computedWidth < 2) {
+                  taskElement.style.minWidth = '2px'
+                  taskElement.style.width = '2px'
+                  console.log(
+                    `强制设置任务 ${task.id} 的宽度为 2px (当前: ${currentWidth}px, 计算: ${computedWidth}px)`
+                  )
+                }
+              } else {
+                console.warn(`未找到任务 ${task.id} 的任务条元素`)
+              }
+            }
+          })
+        }, 200)
+      })
+    }
 
     // 计算实际数据的开始和结束时间
     let minStartDate = null
@@ -692,9 +943,7 @@ export default {
           }
 
           // 查找所有可能的 gantt 元素
-          const ganttContainer = container.querySelector('.gantt_container')
           const ganttTaskArea = container.querySelector('.gantt_task')
-          const ganttScaleArea = container.querySelector('.gantt_scale')
 
           let wheelTimeout = null
           let lastZoomTime = 0
@@ -849,5 +1098,22 @@ export default {
 /* 自定义任务条文本样式 */
 .gantt_task_content {
   font-size: 12px !important;
+}
+
+/* 确保小 duration 任务条可见 */
+.gantt_task_line {
+  min-width: 2px !important;
+}
+
+.gantt_task_bar {
+  min-width: 2px !important;
+}
+
+/* 对于非常小的任务条，使用特殊样式 */
+.gantt_task_line[style*='width: 0'],
+.gantt_task_line[style*='width:1px'],
+.gantt_task_line[style*='width: 1px'] {
+  min-width: 2px !important;
+  width: 2px !important;
 }
 </style>
